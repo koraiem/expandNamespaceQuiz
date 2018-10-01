@@ -1,5 +1,6 @@
 const proxyquire     = require( 'proxyquire' );
-const AssertionError = require( 'assert' ).AssertionError;
+// const AssertionError = require( 'assert' ).AssertionError;
+/* not using AssertionError to catch the exact error string in the 3rd test */
 
 describe( 'The ./lib/expandNamespaces function', ()=>{
 
@@ -23,11 +24,11 @@ describe( 'The ./lib/expandNamespaces function', ()=>{
       './loadNamespaces': sinon.stub()
     } );
 
-    const mPath  = '<universal>/somePath';
+    const expected  = '<universal>/somePath';
     
     expect( ()=>{
 
-      expandNamespaces( mPath );
+      expandNamespaces( expected );
 
     } ).to.throw( TypeError );
 
@@ -36,39 +37,55 @@ describe( 'The ./lib/expandNamespaces function', ()=>{
 
   it( 'Should return an error if new module namespace is not defined in existing namespaces', ()=>{
 
-    const loadNamespaces = require( '../lib/loadNamespaces' );
-    
     const expandNamespace = proxyquire( '../lib/expandNamespace', {
-      './loadNamespaces': loadNamespaces
+      './loadNamespaces': sinon.stub().returns( { namespaces:
+{ universal: './universal/lib',
+  actions:   './actions' }
+      } )
     } );
 
-    // const expandNamespaces = require( '../lib/expandNamespace','./loadNamespaces' );
-    // const loadNamespaces   = require( './loadNamespaces' );
-          
-    // const AssertionError   = require( 'assertion-error' );
-
-    const mPath  = '<bala7>/somePath';
+    const expected = '<someNamespace>/somePath';
     
     expect( ()=>{
 
-      expandNamespace( mPath );
+      expandNamespace( expected );
 
-    } ).to.throw( AssertionError );
+    } ).to.throw( 'namespace <someNamespace> is not defined.' );
 
   } );
 
   it( 'Should return the correct new relative path based on the expanded namespace', ()=>{
 
-    const loadNamespaces = require( '../lib/loadNamespaces' );
-    
     const expandNamespace = proxyquire( '../lib/expandNamespace', {
-      './loadNamespaces': loadNamespaces
+      './loadNamespaces': sinon.stub().returns( { namespaces:
+{ universal: './universal/lib',
+  actions:   './actions' }
+      } )
     } );
 
     const callerPath = require( 'caller-path' );
     const mPath      = '<universal>/test/box';
 
     const expected = '..\\..\\..\\..\\universal\\lib\\test\\box';
+    const actual   = expandNamespace( mPath, callerPath() );
+
+    expect( actual ).to.equal( expected );
+
+  } );
+
+  it( 'Appends "./" to the relativePath if it doesn\'t start with it', ()=>{
+
+    const expandNamespace = proxyquire( '../lib/expandNamespace', {
+      './loadNamespaces': sinon.stub().returns( { namespaces:
+{ universal: './universal/lib',
+  actions:   'actions' }
+      } )
+    } );
+
+    const callerPath = require( 'caller-path' );
+    const mPath      = '<actions>/test/square';
+
+    const expected = '..\\..\\..\\..\\actions\\test\\square';
     const actual   = expandNamespace( mPath, callerPath() );
 
     expect( actual ).to.equal( expected );
